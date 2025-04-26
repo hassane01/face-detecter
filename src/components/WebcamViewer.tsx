@@ -6,7 +6,8 @@ export function WebcamViewer() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  
+  const [file, setFile] = useState<File | null>(null);
+const imageRef = useRef<HTMLImageElement>(null);
 
   // ─── 1) Start/Stop Webcam Hooks ───────────────────────────────────
   const startWebcam = async () => {
@@ -93,7 +94,40 @@ export function WebcamViewer() {
     // 5) Loop
     requestAnimationFrame(runFaceDetection);
   };
- 
+  const runImageDetection = async () => {
+    if (!imageRef.current || !canvasRef.current) return;
+  
+    // 1) Match canvas to image size
+    const img = imageRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+  
+    // 2) Detect faces + attributes on the image
+    const detections = await faceapi
+      .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
+      .withAgeAndGender()
+      .withFaceExpressions();
+  
+    // 3) Draw
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    faceapi.draw.drawDetections(canvas, detections);
+  
+    detections.forEach(d => {
+      const { x, y } = d.detection.box;
+      const age = Math.round(d.age);
+      const gender = d.gender;
+      const maxEmotion = Object.entries(d.expressions)
+        .reduce((p, c) => (c[1] > p[1] ? c : p))[0];
+      const label = `${age} yrs, ${gender}, ${maxEmotion}`;
+  
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = 'red';
+      ctx.fillText(label, x, y - 8);
+    });
+  };
   
   useEffect(() => {
     if (stream) runFaceDetection();
@@ -115,8 +149,36 @@ export function WebcamViewer() {
         <video ref={videoRef} autoPlay muted className="w-full rounded shadow-lg" />
         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
       </div>
-      
-
+      <div className="mt-4">
+  <label className="block mb-1 font-medium">Upload Image:</label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={e => {
+      if (e.target.files && e.target.files[0]) {
+        setFile(e.target.files[0]);
+        // stop webcam if running
+        stopWebcam();
+      }
+    }}
+    className="block"
+  />
+</div>
+{file && (
+  <div className="relative w-full max-w-lg mt-6">
+    <img
+      ref={imageRef}
+      src={URL.createObjectURL(file)}
+      alt="Uploaded"
+      onLoad={() => runImageDetection()}
+      className="w-full rounded shadow-lg"
+    />
+    <canvas
+      ref={canvasRef}
+      className="absolute top-0 left-0 w-full h-full"
+    />
+  </div>
+)}
 
     </div>
   );
