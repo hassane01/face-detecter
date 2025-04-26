@@ -1,6 +1,11 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import * as faceapi from 'face-api.js';
+import {
+  FaceDetectionWithAgeAndGender,
+  WithFaceExpressions
+} from 'face-api.js';
+type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
 
 export function WebcamViewer() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -8,6 +13,8 @@ export function WebcamViewer() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [file, setFile] = useState<File | null>(null);
 const imageRef = useRef<HTMLImageElement>(null);
+const [detections, setDetections] = useState<Detection[]>([]);
+
 
   // ─── 1) Start/Stop Webcam Hooks ───────────────────────────────────
   const startWebcam = async () => {
@@ -65,7 +72,9 @@ const imageRef = useRef<HTMLImageElement>(null);
       .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
       .withAgeAndGender()
       .withFaceExpressions();
-  
+
+
+      setDetections(detections);
     // 2) Prepare canvas
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -108,7 +117,7 @@ const imageRef = useRef<HTMLImageElement>(null);
       .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
       .withAgeAndGender()
       .withFaceExpressions();
-  
+      setDetections(detections)
     // 3) Draw
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -164,6 +173,19 @@ const imageRef = useRef<HTMLImageElement>(null);
     className="block"
   />
 </div>
+<div className="mt-4">
+  <button
+    onClick={() => {
+      // detections are already in state
+      console.log('Captured detections:', detections);
+      // you could also send them to an API here
+    }}
+    disabled={detections.length === 0}
+    className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+  >
+    Capture Detections
+  </button>
+</div>
 {file && (
   <div className="relative w-full max-w-lg mt-6">
     <img
@@ -179,6 +201,25 @@ const imageRef = useRef<HTMLImageElement>(null);
     />
   </div>
 )}
+{detections.length > 0 && (
+  <div className="mt-6 w-full max-w-lg bg-gray-100 p-4 rounded shadow">
+    <h3 className="font-semibold mb-2">Detected Faces:</h3>
+    <ul className="space-y-2">
+      {detections.map((d, i) => {
+        // Determine dominant emotion
+        const maxEmotion = Object.entries(d.expressions)
+          .reduce((p, c) => (c[1] > p[1] ? c : p))[0];
+        return (
+          <li key={i} className="text-sm">
+            <strong>Face {i + 1}:</strong> 
+            {` Age: ${Math.round(d.age)} yrs, Gender: ${d.gender}, Emotion: ${maxEmotion}`}
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+)}
+
 
     </div>
   );
