@@ -5,16 +5,28 @@ import {
   FaceDetectionWithAgeAndGender,
   WithFaceExpressions
 } from 'face-api.js';
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { setDetections, clearDetections } from '../store/slices/detectionSlice'
+import { setImageUrl, clearImage }       from '../store/slices/imageSlice'
+
 type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
 
 export function WebcamViewer() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [file, setFile] = useState<File | null>(null);
 const imageRef = useRef<HTMLImageElement>(null);
-const [detections, setDetections] = useState<Detection[]>([]);
 
+const dispatch = useAppDispatch()
+const detections = useAppSelector(state => state.detections.items)
+const fileUrl    = useAppSelector(state => state.image.fileUrl)
+
+
+useEffect(() => {
+  if (fileUrl) {
+    runImageDetection();
+  }
+}, [fileUrl]);
 
   // ─── 1) Start/Stop Webcam Hooks ───────────────────────────────────
   const startWebcam = async () => {
@@ -27,6 +39,7 @@ const [detections, setDetections] = useState<Detection[]>([]);
       stream.getTracks().forEach(t => t.stop());
       setStream(null);
     }
+    dispatch(clearDetections())
   };
 
   // ─── 2) Model Loading Hook ────────────────────────────────────────
@@ -74,7 +87,8 @@ const [detections, setDetections] = useState<Detection[]>([]);
       .withFaceExpressions();
 
 
-      setDetections(detections);
+      dispatch(setDetections(detections))
+
     // 2) Prepare canvas
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -117,7 +131,7 @@ const [detections, setDetections] = useState<Detection[]>([]);
       .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
       .withAgeAndGender()
       .withFaceExpressions();
-      setDetections(detections)
+      dispatch(setDetections(detections))
     // 3) Draw
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -161,17 +175,18 @@ const [detections, setDetections] = useState<Detection[]>([]);
       <div className="mt-4">
   <label className="block mb-1 font-medium">Upload Image:</label>
   <input
-    type="file"
-    accept="image/*"
-    onChange={e => {
-      if (e.target.files && e.target.files[0]) {
-        setFile(e.target.files[0]);
-        // stop webcam if running
-        stopWebcam();
-      }
-    }}
+  type="file"
+  onChange={e => {
+    if (e.target.files?.[0]) {
+      const url = URL.createObjectURL(e.target.files[0])
+      dispatch(setImageUrl(url))
+      dispatch(clearDetections())
+      stopWebcam()
+    }
+  }}
     className="block"
-  />
+/>
+
 </div>
 <div className="mt-4">
   <button
@@ -186,11 +201,11 @@ const [detections, setDetections] = useState<Detection[]>([]);
     Capture Detections
   </button>
 </div>
-{file && (
+{fileUrl && (
   <div className="relative w-full max-w-lg mt-6">
     <img
       ref={imageRef}
-      src={URL.createObjectURL(file)}
+      src={fileUrl}
       alt="Uploaded"
       onLoad={() => runImageDetection()}
       className="w-full rounded shadow-lg"
