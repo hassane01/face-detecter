@@ -9,6 +9,8 @@ import { setDetections, clearDetections } from "../store/slices/detectionSlice";
 import { setImageUrl, clearImage } from "../store/slices/imageSlice";
 import { Controls } from "./webcamviewer/Controls";
 import { LiveFeed } from "./webcamviewer/LiveFeed";
+import { ImagePreview } from "./webcamviewer/ImagePreview";
+import { DetectionList } from "./webcamviewer/DetectionList";
 
 type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
 
@@ -174,48 +176,21 @@ export function WebcamViewer() {
         disableCapture={detections.length === 0}
       />
       <LiveFeed
-  videoRef={videoRef}
-  canvasRef={canvasRef}
-  stream={stream}
-  runFaceDetection={runFaceDetection}
-/>
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        stream={stream}
+        runFaceDetection={runFaceDetection}
+      />
 
       {fileUrl && (
-        <div className="relative w-full max-w-lg mt-6">
-          <img
-            ref={imageRef}
-            src={fileUrl}
-            alt="Uploaded"
-            onLoad={() => runImageDetection()}
-            className="w-full rounded shadow-lg"
-          />
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full"
-          />
-        </div>
+        <ImagePreview
+          fileUrl={fileUrl}
+          imageRef={imageRef}
+          canvasRef={canvasRef}
+          runImageDetection={runImageDetection}
+        />
       )}
-      {detections.length > 0 && (
-        <div className="mt-6 w-full max-w-lg bg-gray-100 p-4 rounded shadow">
-          <h3 className="font-semibold mb-2">Detected Faces:</h3>
-          <ul className="space-y-2">
-            {detections.map((d, i) => {
-              // Determine dominant emotion
-              const maxEmotion = Object.entries(d.expressions).reduce((p, c) =>
-                c[1] > p[1] ? c : p
-              )[0];
-              return (
-                <li key={i} className="text-sm">
-                  <strong>Face {i + 1}:</strong>
-                  {` Age: ${Math.round(d.age)} yrs, Gender: ${
-                    d.gender
-                  }, Emotion: ${maxEmotion}`}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      {detections.length > 0 && <DetectionList detections={detections} />}
     </div>
   );
 }
