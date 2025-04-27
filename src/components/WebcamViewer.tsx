@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setDetections, clearDetections } from "../store/slices/detectionSlice";
 import { setImageUrl, clearImage } from "../store/slices/imageSlice";
 import { Controls } from "./webcamviewer/Controls";
+import { LiveFeed } from "./webcamviewer/LiveFeed";
 
 type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
 
@@ -172,18 +173,12 @@ export function WebcamViewer() {
         onCapture={() => console.log("Captured", detections)}
         disableCapture={detections.length === 0}
       />
-      <div className="relative w-full max-w-lg">
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          className="w-full rounded shadow-lg"
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full"
-        />
-      </div>
+      <LiveFeed
+  videoRef={videoRef}
+  canvasRef={canvasRef}
+  stream={stream}
+  runFaceDetection={runFaceDetection}
+/>
 
       {fileUrl && (
         <div className="relative w-full max-w-lg mt-6">
