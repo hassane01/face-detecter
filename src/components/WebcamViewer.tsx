@@ -1,36 +1,31 @@
-import React, { useRef, useState, useEffect } from "react";
-import * as faceapi from "face-api.js";
-import {
-  FaceDetectionWithAgeAndGender,
-  WithFaceExpressions,
-} from "face-api.js";
+import { useEffect, useRef, useState } from "react";
+
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setDetections, clearDetections } from "../store/slices/detectionSlice";
-import { setImageUrl, clearImage } from "../store/slices/imageSlice";
+import { clearDetections } from "../store/slices/detectionSlice";
+import { setImageUrl } from "../store/slices/imageSlice";
 import { Controls } from "./webcamviewer/Controls";
 import { LiveFeed } from "./webcamviewer/LiveFeed";
 import { ImagePreview } from "./webcamviewer/ImagePreview";
 import { DetectionList } from "./webcamviewer/DetectionList";
 
-type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
+import { useFaceApiModels } from "../hooks/useFaceApiModels";
+import { useCanvasSync } from "../hooks/useCanvasSync";
+import { useFaceDetection } from "../hooks/useFaceDetection";
+import { useImageDetection } from "../hooks/useImageDetection";
 
 export function WebcamViewer() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const imageCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const dispatch = useAppDispatch();
   const detections = useAppSelector((state) => state.detections.items);
   const fileUrl = useAppSelector((state) => state.image.fileUrl);
 
-  useEffect(() => {
-    if (fileUrl) {
-      runImageDetection();
-    }
-  }, [fileUrl]);
-
-  // ─── 1) Start/Stop Webcam Hooks ───────────────────────────────────
+  // ─── A) Start / Stop Logic ────────────────────────────
   const startWebcam = async () => {
     const userStream = await navigator.mediaDevices.getUserMedia({
       video: true,
@@ -38,6 +33,7 @@ export function WebcamViewer() {
     setStream(userStream);
     if (videoRef.current) videoRef.current.srcObject = userStream;
   };
+
   const stopWebcam = () => {
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
@@ -46,121 +42,31 @@ export function WebcamViewer() {
     dispatch(clearDetections());
   };
 
-  // ─── 2) Model Loading Hook ────────────────────────────────────────
   useEffect(() => {
-    const MODEL_URL = "/models";
-    Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-    ])
-      .then(() => console.log("All required nets loaded"))
-      .catch((err) => console.error("Model loading error:", err));
-  }, []);
-
-  // ─── 3) CANVAS SIZING Hook (place this *after* stream/ref setup) ──
-  useEffect(() => {
-    if (!stream || !videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    const handleResize = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    };
-
-    // When the video’s metadata (including dimensions) finishes loading:
-    video.addEventListener("loadedmetadata", handleResize);
-
-    // Clean up the listener if stream changes or component unmounts:
     return () => {
-      video.removeEventListener("loadedmetadata", handleResize);
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
     };
   }, [stream]);
 
-  // ─── 4) FACE DETECTION Loop Hook ─────────────────────────────────
-  const runFaceDetection = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  // ─── B) Side-Effect Hooks ─────────────────────────────
 
-    // 1) Detect faces + attributes
-    const detections = await faceapi
-      .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-      .withAgeAndGender()
-      .withFaceExpressions();
+  const modelsLoaded = useFaceApiModels();
+  useCanvasSync(stream, videoRef, videoCanvasRef);
+  useFaceDetection(modelsLoaded, stream, videoRef, videoCanvasRef);
+  useImageDetection(modelsLoaded, fileUrl, imageRef, imageCanvasRef);
 
-    dispatch(setDetections(detections));
+  // ─── C) Render ────────────────────────────────────────
+  {
+    console.log("Video element:", videoRef.current);
 
-    // 2) Prepare canvas
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 3) Draw bounding boxes
-    faceapi.draw.drawDetections(canvas, detections);
-
-    // 4) Draw labels for each face
-    detections.forEach((d) => {
-      const { x, y } = d.detection.box;
-      const age = Math.round(d.age);
-      const gender = d.gender;
-      // find the emotion with the highest probability
-      const maxEmotion = Object.entries(d.expressions).reduce((prev, curr) =>
-        curr[1] > prev[1] ? curr : prev
-      )[0];
-
-      const label = `${age} yrs, ${gender}, ${maxEmotion}`;
-
-      ctx.font = "16px sans-serif";
-      ctx.fillStyle = "red";
-      ctx.fillText(label, x, y - 8);
-    });
-
-    // 5) Loop
-    requestAnimationFrame(runFaceDetection);
-  };
-  const runImageDetection = async () => {
-    if (!imageRef.current || !canvasRef.current) return;
-
-    // 1) Match canvas to image size
-    const img = imageRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-
-    // 2) Detect faces + attributes on the image
-    const detections = await faceapi
-      .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
-      .withAgeAndGender()
-      .withFaceExpressions();
-    dispatch(setDetections(detections));
-    // 3) Draw
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    faceapi.draw.drawDetections(canvas, detections);
-
-    detections.forEach((d) => {
-      const { x, y } = d.detection.box;
-      const age = Math.round(d.age);
-      const gender = d.gender;
-      const maxEmotion = Object.entries(d.expressions).reduce((p, c) =>
-        c[1] > p[1] ? c : p
-      )[0];
-      const label = `${age} yrs, ${gender}, ${maxEmotion}`;
-
-      ctx.font = "16px sans-serif";
-      ctx.fillStyle = "red";
-      ctx.fillText(label, x, y - 8);
-    });
-  };
-
-  useEffect(() => {
-    if (stream) runFaceDetection();
-  }, [stream]);
-
-  // ─── 5) RENDER ────────────────────────────────────────────────────
+    console.log(
+      "Video dimensions:",
+      videoRef.current?.videoWidth,
+      videoRef.current?.videoHeight
+    );
+  }
   return (
     <div className="flex flex-col items-center space-y-4">
       <Controls
@@ -168,26 +74,20 @@ export function WebcamViewer() {
         onStart={startWebcam}
         onStop={stopWebcam}
         onUpload={(f) => {
+          stopWebcam();
           dispatch(setImageUrl(URL.createObjectURL(f)));
           dispatch(clearDetections());
-          stopWebcam();
         }}
         onCapture={() => console.log("Captured", detections)}
         disableCapture={detections.length === 0}
       />
-      <LiveFeed
-        videoRef={videoRef}
-        canvasRef={canvasRef}
-        stream={stream}
-        runFaceDetection={runFaceDetection}
-      />
+      <LiveFeed videoRef={videoRef} canvasRef={videoCanvasRef} />
 
       {fileUrl && (
         <ImagePreview
           fileUrl={fileUrl}
           imageRef={imageRef}
-          canvasRef={canvasRef}
-          runImageDetection={runImageDetection}
+          imageCanvasRef={imageCanvasRef}
         />
       )}
       {detections.length > 0 && <DetectionList detections={detections} />}

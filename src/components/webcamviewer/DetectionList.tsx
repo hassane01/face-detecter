@@ -1,7 +1,6 @@
-import React from 'react';
-import type { FaceDetectionWithAgeAndGender, WithFaceExpressions } from 'face-api.js';
+import type { WithAge, WithGender, WithFaceExpressions, FaceDetection } from 'face-api.js';
 
-type Detection = FaceDetectionWithAgeAndGender & WithFaceExpressions;
+type Detection = WithFaceExpressions<WithAge<WithGender<{ detection: FaceDetection }>>>;
 
 interface DetectionListProps {
   detections: Detection[];

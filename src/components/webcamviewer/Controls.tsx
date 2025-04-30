@@ -1,5 +1,3 @@
-import React from "react";
-
 interface ControlsProps {
   streamActive: boolean;
   onStart: () => void;
@@ -29,7 +27,7 @@ export function Controls({
         </button>
         <button
           onClick={onStop}
-          disabled={disableCapture}
+          disabled={!streamActive}
           className="px-5 py-3 rounded-lg bg-red-600 text-white text-base disabled:opacity-50"
         >
           Stop Webcam
@@ -38,23 +36,23 @@ export function Controls({
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div>
-          <label className="block mb-1 font-medium text-gray-700">
+          <label htmlFor="upload-input" className="block mb-1 font-medium text-gray-700">
             Upload Image:
           </label>
           <input
+            id="upload-input"
             type="file"
             accept="image/*"
             onChange={(e) => {
-              const file = e.target.files && e.target.files[0];
-              if (file) {
-                onUpload(file);
-              }
+              const file = e.target.files?.[0];
+              if (file) onUpload(file);
             }}
             className="text-sm"
           />
         </div>
         <button
           onClick={onCapture}
+          disabled={disableCapture}
           className="px-5 py-3 rounded-lg bg-blue-600 text-white text-base disabled:opacity-50"
         >
           Capture Detections

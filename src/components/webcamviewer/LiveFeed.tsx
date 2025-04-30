@@ -1,20 +1,14 @@
-import React, { RefObject, useEffect } from 'react';
+import { RefObject } from 'react';
 
 interface LiveFeedProps {
   videoRef: RefObject<HTMLVideoElement | null>;
-  canvasRef: RefObject<HTMLCanvasElement | null>;
-  stream: MediaStream | null;
-  runFaceDetection: () => void;
+canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
-export function LiveFeed({ videoRef, canvasRef, stream, runFaceDetection }: LiveFeedProps) {
+export function LiveFeed({ videoRef, canvasRef }: LiveFeedProps) {
   // sizing effect stays here if you want or leave in parent
-  useEffect(() => {
-    if (stream) runFaceDetection();
-  }, [stream]);
-
+  console.log("Canvas element:", canvasRef.current);
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="relative w-full max-w-md mx-auto">
         <video
           ref={videoRef}
@@ -27,6 +21,5 @@ export function LiveFeed({ videoRef, canvasRef, stream, runFaceDetection }: Live
           className="absolute top-0 left-0 w-full h-full"
         />
       </div>
-    </div>
   );
 }
