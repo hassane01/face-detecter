@@ -36,7 +36,10 @@ export function Controls({
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div>
-          <label htmlFor="upload-input" className="block mb-1 font-medium text-gray-700">
+          <label
+            htmlFor="upload-input"
+            className="block mb-1 font-medium text-gray-700"
+          >
             Upload Image:
           </label>
           <input

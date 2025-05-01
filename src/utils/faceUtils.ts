@@ -1,28 +1,32 @@
 import * as faceapi from "face-api.js";
 
-/**
- * Given an object of expression scores, returns the emotion key with highest score.
- */
-export function getDominantEmotion(expressions: faceapi.FaceExpressions): string {
-  return Object.entries(expressions).reduce(
-    (prev, curr) => (curr[1] > prev[1] ? curr : prev)
+export function getDominantEmotion(
+  expressions: faceapi.FaceExpressions
+): string {
+  return Object.entries(expressions).reduce((prev, curr) =>
+    curr[1] > prev[1] ? curr : prev
   )[0];
 }
 
-/**
- * Clears the canvas, draws bounding boxes and face labels (age, gender, emotion).
- */
+type AnnotatedDetection = faceapi.WithFaceExpressions<
+  faceapi.WithAge<
+    faceapi.WithGender<
+      faceapi.WithFaceLandmarks<{
+        detection: faceapi.FaceDetection;
+      }, faceapi.FaceLandmarks68>
+    >
+  >
+>;
+
+
 export function drawDetectionsWithLabels(
   source: HTMLVideoElement | HTMLImageElement,
   canvas: HTMLCanvasElement,
-  detections: faceapi.WithFaceExpressions<
-    faceapi.WithAgeAndGender<faceapi.FaceDetection>
-  >[]
+  detections: AnnotatedDetection[]
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  // Match canvas size to displayed video/image
   const displaySize = {
     width: source.clientWidth,
     height: source.clientHeight,
@@ -31,14 +35,11 @@ export function drawDetectionsWithLabels(
   faceapi.matchDimensions(canvas, displaySize);
   const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-  // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw detection boxes and landmarks
   faceapi.draw.drawDetections(canvas, resizedDetections);
-  faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+  // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections); // Uncomment if .withFaceLandmarks() used
 
-  // Draw labels (age, gender, emotion)
   resizedDetections.forEach((d) => {
     const { x, y } = d.detection.box;
     const age = Math.round(d.age);

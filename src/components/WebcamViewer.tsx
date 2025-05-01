@@ -58,15 +58,7 @@ export function WebcamViewer() {
   useImageDetection(modelsLoaded, fileUrl, imageRef, imageCanvasRef);
 
   // ─── C) Render ────────────────────────────────────────
-  {
-    console.log("Video element:", videoRef.current);
 
-    console.log(
-      "Video dimensions:",
-      videoRef.current?.videoWidth,
-      videoRef.current?.videoHeight
-    );
-  }
   return (
     <div className="flex flex-col items-center space-y-4">
       <Controls

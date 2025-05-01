@@ -13,7 +13,8 @@ export function useImageDetection(
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    if (!modelsLoaded || !fileUrl || !imageRef.current || !canvasRef.current) return;
+    if (!modelsLoaded || !fileUrl || !imageRef.current || !canvasRef.current)
+      return;
 
     const run = async () => {
       const img = imageRef.current!;
@@ -27,11 +28,13 @@ export function useImageDetection(
         .withFaceExpressions();
 
       dispatch(setDetections(detections));
-      drawDetectionsWithLabels(imageRef.current!, canvasRef.current!, detections);
-
-
+      drawDetectionsWithLabels(
+        imageRef.current!,
+        canvasRef.current!,
+        detections
+      );
     };
 
     run();
-  }, [modelsLoaded ,fileUrl, imageRef, canvasRef, dispatch]);
+  }, [modelsLoaded, fileUrl, imageRef, canvasRef, dispatch]);
 }

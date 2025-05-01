@@ -27,7 +27,11 @@ export function useFaceDetection(
 
       try {
         const detections = await faceapi
-          .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+          .detectAllFaces(
+            videoRef.current,
+            new faceapi.TinyFaceDetectorOptions()
+          )
+          .withFaceLandmarks()
           .withAgeAndGender()
           .withFaceExpressions();
 
