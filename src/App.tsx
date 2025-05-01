@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import * as faceapi from 'face-api.js';
 import { WebcamViewer } from './components/WebcamViewer';
 
