@@ -2,7 +2,7 @@ import { RefObject, useEffect } from "react";
 import * as faceapi from "face-api.js";
 import { useAppDispatch } from "../store/hooks";
 import { setDetections } from "../store/slices/detectionSlice";
-import { drawDetectionsWithLabels } from "../utils/faceUtils";
+import { SimpleDetection, drawSimpleDetectionsWithLabels } from "../utils/faceUtils";
 
 export function useImageDetection(
   modelsLoaded: boolean,
@@ -28,10 +28,10 @@ export function useImageDetection(
         .withFaceExpressions();
 
       dispatch(setDetections(detections));
-      drawDetectionsWithLabels(
-        imageRef.current!,
-        canvasRef.current!,
-        detections
+      drawSimpleDetectionsWithLabels(
+        img,
+        canvas,
+        detections as SimpleDetection[]
       );
     };
 
