@@ -16,6 +16,7 @@ export function useFaceApiModels(): boolean {
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net .loadFromUri(MODEL_URL), 
     ])
       .then(() => {
         console.log("✅ face-api.js models loaded");
